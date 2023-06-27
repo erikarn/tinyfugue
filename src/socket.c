@@ -25,6 +25,7 @@
 #include <fcntl.h>
 #include <sys/file.h>	/* for FNONBLOCK on SVR4, hpux, ... */
 #include <sys/socket.h>
+#include <netinet/tcp.h>
 #include <signal.h>	/* for killing resolver child process */
 
 #if WIDECHAR
@@ -1593,6 +1594,23 @@ static int ICONFAIL(Sock *sock, const char *what, const char *why)
     return 0;
 }
 
+int
+set_socket_nagle_disable(int fd)
+{
+    int flags, ret;
+
+    /*
+     * Disable nagle, so we're not waiting for an RTT before
+     * we push another data frame at them.  Just fire them off
+     * as we get them until we fill the window.
+     */
+    flags = 1;
+    ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
+        (char *) &flags, sizeof(int));
+    return ret;
+}
+
+
 static int openconn(Sock *sock)
 {
     int flags;
@@ -1710,6 +1728,7 @@ static int openconn(Sock *sock)
     xsock->constate = SS_CONNECTING;
     if (ai_connect(xsock->fd, xsock->addr) == 0) {
         /* The connection completed successfully. */
+        set_socket_nagle_disable(xsock->fd);
         xsock->constate = SS_CONNECTED;
         return establish(xsock);
 
@@ -2104,6 +2123,7 @@ static int establish(Sock *sock)
         }
 
         /* connect() worked.  Clear the pending stuff, and get on with it. */
+        set_socket_nagle_disable(xsock->fd);
         xsock->constate = SS_CONNECTED;
         FD_CLR(xsock->fd, &writers);
 
