@@ -74,6 +74,8 @@ defopcode(PBUF     ,'U', SUB,  STRP, 0)	    /* buf */
 /*defopcode(ABUF     ,'U', SUB,  STRP, APP)*/
 defopcode(PCMDNAME ,'V', SUB, NONE, 0)	    /* {0} command name */
 defopcode(ACMDNAME ,'V', SUB, NONE, APP)
+defopcode(PARGSTRING,'W', SUB, NONE, 0)	    /* {A} full argstring */
+defopcode(AARGSTRING, 'W', SUB, NONE, APP)
 
 /* jump operators.  Flag: negate condition */
 defopcode(JZ       ,'0', JUMP, INT,  0)     /* jump if zero */
