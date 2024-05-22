@@ -871,6 +871,19 @@ Value *prog_interpret(const Program *prog, int in_expr)
 	    if (!pushval(val))
 		goto prog_interpret_exit;
 	    break;
+	case OP_AARGSTRING:
+	    if (!(empty = !(argstring)))
+		SStringcat(buf, argstring);
+	    break;
+	case OP_PARGSTRING:
+	    if ((empty = !(argstring)))
+		val = shareval(val_blank);
+	    else
+		val = newSstr(argstring); /* XXX argstring is const ConString */
+	    if (!pushval(val))
+		goto prog_interpret_exit;
+	    break;
+
 	case OP_APARM_ALL:
 	    if (!do_parmsub(buf, 0, tf_argc - 1, &empty))
 		goto prog_interpret_exit;
@@ -2047,6 +2060,7 @@ int varsub(Program *prog, int sub_warn, int in_expr)
     int result = 0;
     const char *start, *contents;
     int bracket, except = FALSE, ell = FALSE, pee = FALSE, star = FALSE, n = -1;
+    int ayy = FALSE;
     String *selector;
     String *dest = NULL;
     static int sub_warned = 0;
@@ -2074,7 +2088,7 @@ int varsub(Program *prog, int sub_warn, int in_expr)
             }
             start = ip;
             if ((ell = (*ip == 'L')) || (pee = (*ip == 'P')) ||
-                (star = (*ip == '*')))
+                (star = (*ip == '*')) || (ayy = (*ip == 'A')))
             {
                 ++ip;
             }
@@ -2107,6 +2121,8 @@ int varsub(Program *prog, int sub_warn, int in_expr)
 
 	if (star) {
 	    code_add(prog, in_expr ? OP_PPARM_ALL : OP_APARM_ALL);
+	} else if (ayy) {
+	    code_add(prog, in_expr ? OP_PARGSTRING: OP_AARGSTRING);
 	} else if (pee) {
 	    if (n < 0) n = 1;
 	    code_add(prog, in_expr ? OP_PREG : OP_AREG, n);

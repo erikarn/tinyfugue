@@ -10202,6 +10202,54 @@ Variable and Argument substitution.
   <[4mname[24m>  The value of the [1mvariable[22;0m <[4mname[24m> is substituted.  Names are case 
           sensitive.  
 
+  A       selects the entirety of the populated argument string before being
+          parsed into the C-style argc/argv array that is then passed into
+          functions and macros.  This is intended to be used by the bodies
+          of hooks and triggers whose invocation will populate the argc/argv array
+          and remove content like leading and multiple spaces between arguments.
+          Simply using {*} to use all of the positional parameters will lose
+          any spaces stripped during argc/argv parsing.
+
+          Internally, this is the 'args' string passed into prog_run().
+          This is called to run a macro when run_match() is called, with the
+          argstring containing the text line that matched it. do_macro() will
+          call the hook or trigger body via prog_run().
+
+          Expressions and macros called via /test func(<arg>, ..) will call
+          prog_interpret() directly, and thus not populate argstring.
+
+          This won't be populated when calling a function as said function has
+          its argument list populated directly.  Instead, you will get the last
+          argument string that was populated by the highest macro invocation in
+          your call stack that did positional parsing.
+
+          Ie, given a test macro such as:
+
+          /def testfunc = \
+                /echo $[strcat({A})] %; \
+                /return
+
+          Calling it /testfunc a   b   c will provide "a  b    c" in {A},
+          "a b c" in {*}, "a" in {1}, "b" in {2}, "c" in {3}.  The spaces will
+          be stripped.
+
+          Calling it /test testfunc("a", "b", "c") will result in it using
+          whatever the earliest macro in the callstack that used positional
+          parameters was.  If called from the input box, it will be blank.
+
+          However, if you have a glob match and test function:
+
+          /def testecho = \
+                /echo $[strcat("Got:", %1)] %; \
+                /return
+
+          /def -mglob -t"*" trig_test_1 = /test testecho({A})
+
+          Then the testecho function would print exactly what was matched on that
+          line, leading spaces and all. If {*} is used, then the spaces will
+          have been stripped before the positional arguments were parsed, and
+          thus nothing will be available.
+
   0       selects the name of the executing macro.  (Before version 4.0, "0" 
           was equivalent to "*").  
 
